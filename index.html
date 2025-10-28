@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>إيداع TON</title>
+    
+    <!-- Telegram SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- TON Connect UI -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            min-height: 100vh;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 16px;
+        }
+
+        .header h1 {
+            font-size: 26px;
+            margin-bottom: 8px;
+        }
+
+        .user-info {
+            background: var(--tg-theme-section-bg-color, #ffffff);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 14px;
+            border: 1px solid var(--tg-theme-section-separator-color, #e0e0e0);
+        }
+
+        .wallet-address-box {
+            background: var(--tg-theme-section-bg-color, #ffffff);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            word-break: break-all;
+            font-size: 12px;
+            text-align: center;
+            border: 1px solid var(--tg-theme-section-separator-color, #e0e0e0);
+        }
+
+        #ton-connect {
+            margin-bottom: 25px;
+        }
+
+        .section {
+            background: var(--tg-theme-section-bg-color, #ffffff);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            border: 1px solid var(--tg-theme-section-separator-color, #e0e0e0);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--tg-theme-text-color, #000);
+        }
+
+        .amounts {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .amount-btn {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: 2px solid transparent;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .amount-btn:hover {
+            opacity: 0.9;
+        }
+
+        .amount-btn:active {
+            transform: scale(0.98);
+        }
+
+        .amount-btn.selected {
+            border-color: var(--tg-theme-link-color, #2481cc);
+            box-shadow: 0 0 0 3px rgba(36, 129, 204, 0.2);
+        }
+
+        .amount-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .custom-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid var(--tg-theme-section-separator-color, #e0e0e0);
+            border-radius: 12px;
+            font-size: 16px;
+            text-align: center;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000);
+        }
+
+        .custom-input:focus {
+            outline: none;
+            border-color: var(--tg-theme-button-color, #3390ec);
+        }
+
+        .custom-input:disabled {
+            opacity: 0.5;
+        }
+
+        .deposit-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 15px;
+        }
+
+        .deposit-btn:hover {
+            opacity: 0.9;
+        }
+
+        .deposit-btn:active {
+            transform: scale(0.98);
+        }
+
+        .deposit-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .info-box {
+            background: var(--tg-theme-section-bg-color, #ffffff);
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            border: 1px solid var(--tg-theme-section-separator-color, #e0e0e0);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid rgba(0,0,0,0.1);
+            border-top: 3px solid var(--tg-theme-button-color, #3390ec);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-box {
+            background: #fee;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            color: #c00;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💎 إيداع TON</h1>
+            <p>اربط محفظتك وادفع بسهولة</p>
+        </div>
+
+        <div class="user-info" id="userInfo">
+            🔍 جاري التحميل...
+        </div>
+
+        <div class="wallet-address-box">
+            <strong>عنوان محفظة الإيداع:</strong><br>
+            <span style="font-family: monospace;">UQB97izclZdCRhHri7pZHDfIuaODkOLxvlN8zwc_7SzrNCYB</span>
+        </div>
+
+        <div id="ton-connect"></div>
+
+        <div class="section">
+            <div class="section-title">اختر المبلغ</div>
+            
+            <div class="amounts">
+                <button class="amount-btn" onclick="selectAmount(1)" disabled id="btn1">1 TON</button>
+                <button class="amount-btn" onclick="selectAmount(5)" disabled id="btn5">5 TON</button>
+                <button class="amount-btn" onclick="selectAmount(10)" disabled id="btn10">10 TON</button>
+                <button class="amount-btn" onclick="selectAmount(20)" disabled id="btn20">20 TON</button>
+            </div>
+
+            <input 
+                type="number" 
+                class="custom-input" 
+                id="customAmount" 
+                placeholder="أو أدخل مبلغ مخصص" 
+                min="0.1" 
+                step="0.1" 
+                disabled
+            >
+
+            <button class="deposit-btn" onclick="sendDeposit()" disabled id="depositBtn">
+                💰 إيداع الآن
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>جاري إرسال المعاملة...</p>
+        </div>
+
+        <div class="info-box">
+            <strong>📌 التعليمات:</strong><br>
+            1. اربط محفظتك (Tonkeeper/MyTonWallet)<br>
+            2. اختر المبلغ أو أدخل مبلغ مخصص<br>
+            3. اضغط "إيداع الآن"<br>
+            4. أكد المعاملة من محفظتك<br>
+            5. ارجع للبوت للتحقق من الإيداع<br>
+            <br>
+            <small>⚠️ الحد الأدنى: 0.1 TON</small>
+        </div>
+    </div>
+
+    <script>
+        const WALLET_ADDRESS = 'UQB97izclZdCRhHri7pZHDfIuaODkOLxvlN8zwc_7SzrNCYB';
+        const BOT_USERNAME = 'Watermelon_Remixbot';
+        
+        // استخدم الرابط الكامل للـ manifest
+        const MANIFEST_URL = 'https://g-coin-bot-1r3s.vercel.app/tonconnect-manifest.json';
+        
+        let tonConnectUI;
+        let selectedAmount = 0;
+        let userId = null;
+        let tg = window.Telegram?.WebApp;
+
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            if (tg.initDataUnsafe?.user) {
+                userId = tg.initDataUnsafe.user.id;
+                const userName = tg.initDataUnsafe.user.first_name || 'مستخدم';
+                document.getElementById('userInfo').textContent = `👤 ${userName} (ID: ${userId})`;
+            }
+        }
+        
+        if (!userId) {
+            const urlParams = new URLSearchParams(window.location.search);
+            userId = urlParams.get('user_id');
+            if (userId) {
+                document.getElementById('userInfo').textContent = `👤 رقم المستخدم: ${userId}`;
+            } else {
+                document.getElementById('userInfo').textContent = '⚠️ لم يتم تحديد المستخدم';
+            }
+        }
+
+        async function initTonConnect() {
+            try {
+                console.log('🚀 جاري تهيئة TON Connect...');
+                console.log('📄 Manifest URL:', MANIFEST_URL);
+                
+                tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                    manifestUrl: MANIFEST_URL,
+                    buttonRootId: 'ton-connect',
+                    actionsConfiguration: {
+                        twaReturnUrl: `https://t.me/${BOT_USERNAME}`
+                    }
+                });
+
+                console.log('✅ تم إنشاء TON Connect UI');
+
+                tonConnectUI.onStatusChange(wallet => {
+                    console.log('🔄 تغيرت حالة المحفظة:', wallet);
+                    if (wallet) {
+                        onWalletConnected(wallet);
+                    } else {
+                        onWalletDisconnected();
+                    }
+                });
+
+                const currentWallet = tonConnectUI.wallet;
+                if (currentWallet) {
+                    console.log('✅ المحفظة متصلة مسبقاً');
+                    onWalletConnected(currentWallet);
+                }
+
+                console.log('✅ TON Connect جاهز!');
+
+            } catch (error) {
+                console.error('❌ خطأ في تهيئة TON Connect:', error);
+                document.getElementById('userInfo').innerHTML = `
+                    <span style="color: #ef4444;">❌ خطأ في التهيئة</span><br>
+                    <small>${error.message}</small>
+                `;
+            }
+        }
+
+        function onWalletConnected(wallet) {
+            console.log('✅ تم ربط المحفظة:', wallet.account.address);
+            
+            document.getElementById('btn1').disabled = false;
+            document.getElementById('btn5').disabled = false;
+            document.getElementById('btn10').disabled = false;
+            document.getElementById('btn20').disabled = false;
+            document.getElementById('customAmount').disabled = false;
+
+            if (tg) {
+                tg.HapticFeedback.notificationOccurred('success');
+                tg.showPopup({
+                    title: 'نجح!',
+                    message: 'تم ربط المحفظة بنجاح',
+                    buttons: [{type: 'ok'}]
+                });
+            }
+        }
+
+        function onWalletDisconnected() {
+            console.log('❌ تم فصل المحفظة');
+            
+            document.getElementById('btn1').disabled = true;
+            document.getElementById('btn5').disabled = true;
+            document.getElementById('btn10').disabled = true;
+            document.getElementById('btn20').disabled = true;
+            document.getElementById('customAmount').disabled = true;
+            document.getElementById('depositBtn').disabled = true;
+        }
+
+        function selectAmount(amount) {
+            selectedAmount = amount;
+            document.getElementById('customAmount').value = '';
+            document.getElementById('depositBtn').disabled = false;
+            
+            document.querySelectorAll('.amount-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            document.getElementById(`btn${amount}`).classList.add('selected');
+
+            if (tg) {
+                tg.HapticFeedback.selectionChanged();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const customInput = document.getElementById('customAmount');
+            if (customInput) {
+                customInput.addEventListener('input', function(e) {
+                    const customValue = parseFloat(e.target.value);
+                    if (customValue && customValue >= 0.1) {
+                        selectedAmount = customValue;
+                        document.getElementById('depositBtn').disabled = false;
+                        
+                        document.querySelectorAll('.amount-btn').forEach(btn => {
+                            btn.classList.remove('selected');
+                        });
+
+                        if (tg) {
+                            tg.HapticFeedback.selectionChanged();
+                        }
+                    } else {
+                        document.getElementById('depositBtn').disabled = true;
+                    }
+                });
+            }
+        });
+
+        async function sendDeposit() {
+            if (!tonConnectUI?.wallet) {
+                const msg = '⚠️ يرجى ربط المحفظة أولاً';
+                if (tg) {
+                    tg.showAlert(msg);
+                } else {
+                    alert(msg);
+                }
+                return;
+            }
+
+            if (!selectedAmount || selectedAmount < 0.1) {
+                const msg = '⚠️ الحد الأدنى 0.1 TON';
+                if (tg) {
+                    tg.showAlert(msg);
+                } else {
+                    alert(msg);
+                }
+                return;
+            }
+
+            if (!userId) {
+                const msg = '⚠️ خطأ: لم يتم التعرف على المستخدم';
+                if (tg) {
+                    tg.showAlert(msg);
+                } else {
+                    alert(msg);
+                }
+                return;
+            }
+
+            try {
+                if (tg) {
+                    tg.HapticFeedback.impactOccurred('medium');
+                }
+                
+                document.getElementById('loading').classList.add('show');
+                document.getElementById('depositBtn').disabled = true;
+
+                console.log('💸 إرسال معاملة:', {
+                    amount: selectedAmount,
+                    userId: userId,
+                    to: WALLET_ADDRESS
+                });
+
+                const amountNano = Math.floor(selectedAmount * 1_000_000_000).toString();
+
+                const transaction = {
+                    validUntil: Math.floor(Date.now() / 1000) + 360,
+                    messages: [
+                        {
+                            address: WALLET_ADDRESS,
+                            amount: amountNano
+                        }
+                    ]
+                };
+
+                const result = await tonConnectUI.sendTransaction(transaction);
+
+                console.log('✅ نجحت المعاملة:', result);
+
+                document.getElementById('loading').classList.remove('show');
+                
+                if (tg) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                    tg.showPopup({
+                        title: '✅ نجح الإرسال!',
+                        message: `تم إرسال ${selectedAmount} TON\n\nارجع للبوت واضغط "تحققت من الدفع"`,
+                        buttons: [{type: 'ok'}]
+                    });
+                } else {
+                    alert(`✅ تم إرسال ${selectedAmount} TON بنجاح!\n\nارجع للبوت واضغط "تحققت من الدفع"`);
+                }
+                
+                selectedAmount = 0;
+                document.getElementById('customAmount').value = '';
+                document.querySelectorAll('.amount-btn').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                document.getElementById('depositBtn').disabled = true;
+
+            } catch (error) {
+                console.error('❌ خطأ في المعاملة:', error);
+                
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('depositBtn').disabled = false;
+                
+                if (tg) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
+                
+                const errorMsg = error.message && error.message.includes('cancel') 
+                    ? '❌ تم إلغاء المعاملة'
+                    : `❌ فشل الإرسال: ${error.message || 'خطأ غير معروف'}`;
+                
+                if (tg) {
+                    tg.showAlert(errorMsg);
+                } else {
+                    alert(errorMsg);
+                }
+            }
+        }
+
+        window.addEventListener('load', () => {
+            console.log('🌐 تحميل الصفحة...');
+            initTonConnect();
+        });
+    </script>
+</body>
+</html>
